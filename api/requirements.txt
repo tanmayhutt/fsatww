@@ -1,0 +1,4 @@
+# Root requirements are for Vercel's Python runtime. The backend's own list
+# is in backend/requirements.txt and adds dev dependencies.
+fastapi==0.115.6
+httpx==0.28.1
