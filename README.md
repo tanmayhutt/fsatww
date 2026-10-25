@@ -65,10 +65,9 @@ for a stable bias before buying.
 │   │       └── ChartTooltip.jsx
 │   ├── index.html, vite.config.js, package.json
 ├── api/index.py             Vercel serverless entry that imports the FastAPI app
-├── deploy/                  Server deploy scripts, Caddy site file and deployment notes
-├── .github/workflows/deploy.yml  CI (tests, build) and deploy on push to main
+├── .github/workflows/ci.yml Tests, front-end build and Docker build on every push
 ├── Dockerfile               Multi-stage build: Vite build, then Python image serving API and UI
-├── compose.yaml
+├── compose.yaml             One-command local run
 ├── vercel.json              Static front end plus Python function for /api/*
 └── requirements.txt         Dependencies for the Vercel function
 ```
@@ -81,8 +80,7 @@ for a stable bias before buying.
 docker compose up --build
 ```
 
-Open http://localhost:5090. The image builds the React app and serves it from the FastAPI process.
-Set `WIND_DESK_BIND=0.0.0.0:8000` to bind elsewhere.
+Open http://localhost:8000. The image builds the React app and serves it from the FastAPI process.
 
 ### Local development
 
@@ -140,6 +138,13 @@ cd backend && python -m scripts.fetch_data
 | `GET /api/accuracy?decisionTime=09:50` | Error metrics for the day-ahead forecasts across the month, plus the horizon profile |
 | `GET /api/vintages?day=2026-01-15` | Every forecast vintage covering a delivery day |
 | `GET /api/health` | Liveness and row counts |
+
+## Deployment
+
+The live app runs on Vercel. The React build is served as static files and the FastAPI app runs as
+one Python serverless function behind `/api/*` (`api/index.py`, `vercel.json`). Vercel does not
+run containers, so the Docker image is for local use and for any host that does. Pushes to `main`
+run the CI workflow and trigger a Vercel production deployment.
 
 ## Design notes
 
