@@ -1,0 +1,30 @@
+name: wind-desk
+services:
+  app:
+    image: ${WIND_DESK_IMAGE:-wind-desk-app}
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${WIND_DESK_BIND:-127.0.0.1:5090}:8000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    cpus: "1.0"
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

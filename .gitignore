@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+.pytest_cache/
+.vercel/
+.DS_Store
+
+# local working notes, not part of the submission
+context.md
+challenge.md
+.claude/
