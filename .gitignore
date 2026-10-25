@@ -10,3 +10,6 @@ __pycache__/
 context.md
 challenge.md
 .claude/
+.vercel
+.env*
+video-script.md

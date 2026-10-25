@@ -7,7 +7,7 @@ quantifies how wrong that forecast tends to be, so the desk can buy with a known
 Scope follows the brief: national wind actuals and forecasts from Elexon only, for purchase
 decisions made in January 2026.
 
-Live app: **TODO add Vercel URL**
+Live app: **https://fsatww.vercel.app**
 
 ## What it does
 
