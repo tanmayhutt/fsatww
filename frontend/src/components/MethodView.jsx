@@ -1,7 +1,8 @@
 export default function MethodView({ meta }) {
   return (
     <section className="prose">
-      <h2>How the numbers are made</h2>
+      <p className="kicker">method</p>
+      <h1 className="h1">How the numbers are made.</h1>
 
       <h3>Data</h3>
       <p>

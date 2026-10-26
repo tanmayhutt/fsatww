@@ -3,7 +3,6 @@ import {
   Area,
   CartesianGrid,
   ComposedChart,
-  Legend,
   Line,
   ResponsiveContainer,
   Tooltip,
@@ -24,6 +23,20 @@ import {
 } from "../format.js";
 import StatTile from "./StatTile.jsx";
 import ChartTooltip from "./ChartTooltip.jsx";
+import { Loading } from "./Turbine.jsx";
+
+const Chevron = ({ direction }) => (
+  <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+    <path
+      d={direction === "left" ? "M10 3 5 8l5 5" : "M6 3l5 5-5 5"}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 export default function DecisionView({ meta, decisionTime }) {
   const [day, setDay] = useState("2026-01-14");
@@ -68,101 +81,143 @@ export default function DecisionView({ meta, decisionTime }) {
 
   return (
     <section>
-      <div className="toolbar">
-        <label className="field">
-          <span>Decision day</span>
+      <div className="section-head">
+        <div>
+          <p className="kicker">day-ahead desk, january 2026</p>
+          <h1 className="h1">The wind forecast you had when you had to buy.</h1>
+        </div>
+        <p className="lead">
+          Pick a decision day. The desk shows the newest Elexon forecast that existed at gate closure, and the
+          range the outcome usually falls in for a forecast made that far ahead. Nothing published later is used.
+        </p>
+      </div>
+
+      <div className="controls">
+        <div className="stepper">
+          <span className="stepper-label">decision day</span>
+          <button
+            className="btn btn-line btn-icon"
+            onClick={() => setDay(addDays(day, -1))}
+            disabled={day <= meta.firstDecisionDay}
+            aria-label="Previous day"
+          >
+            <Chevron direction="left" />
+          </button>
           <input
             type="date"
             value={day}
             min={meta.firstDecisionDay}
             max={meta.lastDecisionDay}
             onChange={(e) => e.target.value && setDay(e.target.value)}
+            aria-label="Decision day"
           />
-        </label>
-        <div className="field-group">
-          <button className="button" onClick={() => setDay(addDays(day, -1))} disabled={day <= meta.firstDecisionDay}>
-            Previous day
-          </button>
-          <button className="button" onClick={() => setDay(addDays(day, 1))} disabled={day >= meta.lastDecisionDay}>
-            Next day
+          <button
+            className="btn btn-line btn-icon"
+            onClick={() => setDay(addDays(day, 1))}
+            disabled={day >= meta.lastDecisionDay}
+            aria-label="Next day"
+          >
+            <Chevron direction="right" />
           </button>
         </div>
-        <label className="toggle">
-          <input type="checkbox" checked={showActual} onChange={(e) => setShowActual(e.target.checked)} />
-          <span>Show what actually happened</span>
-        </label>
-        <label className="toggle">
-          <input type="checkbox" checked={showHindsight} onChange={(e) => setShowHindsight(e.target.checked)} />
-          <span>Show last forecast before each hour</span>
-        </label>
+        <div className="chips">
+          <button
+            className="chip"
+            aria-pressed={showActual}
+            onClick={() => setShowActual((v) => !v)}
+            style={{ "--chip-colour": COLORS.actual }}
+          >
+            <span className="chip-dot" />
+            What actually happened
+          </button>
+          <button
+            className="chip"
+            aria-pressed={showHindsight}
+            onClick={() => setShowHindsight((v) => !v)}
+            style={{ "--chip-colour": COLORS.band }}
+          >
+            <span className="chip-dot" />
+            Last forecast before each hour
+          </button>
+        </div>
       </div>
 
       {error && <div className="notice notice-error">{error}</div>}
+      {!data && !error && <Loading label="fetching the forecast" />}
 
       {data && (
         <>
-          <div className="headline">
-            <h2>
-              Buying for {dateLabel(data.deliveryDay)}, decided {dateTimeLabel(data.decisionAt)}
-            </h2>
-            <p className="muted">
-              Latest forecast available at that moment was published {dateTimeLabel(data.publishTime)},{" "}
-              {data.forecastAgeMinutes} minutes before gate closure. Forecasts issued later did not exist yet
-              and are excluded.
-            </p>
+          <div className="panel">
+            <div>
+              <p className="kicker">decided {dateTimeLabel(data.decisionAt).toLowerCase()}</p>
+              <h2 className="panel-title">Buying for {dateLabel(data.deliveryDay)}</h2>
+              <p className="panel-note">
+                The newest forecast at that moment was published {dateTimeLabel(data.publishTime)}, {data.forecastAgeMinutes}{" "}
+                minutes before gate closure. Forecasts issued later did not exist yet and are not used.
+              </p>
+              <span className="panel-tag">
+                {data.history.length} forecast {data.history.length === 1 ? "issue" : "issues"} existed before the decision
+              </span>
+            </div>
+            <dl className="metrics">
+              <StatTile
+                label="forecast wind for the day"
+                value={fmtMWh(data.summary.forecastMwh)}
+                detail="Sum of the 24 hourly forecasts"
+              />
+              <StatTile
+                label="typical miss at this lead time"
+                value={fmtMW(avgBand(points))}
+                detail="Half-width of the expected range, learned from January"
+              />
+              {showActual && (
+                <>
+                  <StatTile
+                    label="actual wind for the day"
+                    value={fmtMWh(data.summary.actualMwh)}
+                    detail="Elexon FUELHH, metered"
+                  />
+                  <StatTile
+                    label="forecast minus actual"
+                    value={fmtSigned(data.summary.bias)}
+                    detail={`Mean over the day, ${fmtPct(data.summary.nmaePct)} of mean output`}
+                    tone={data.summary.bias > 0 ? "over" : "under"}
+                  />
+                </>
+              )}
+            </dl>
           </div>
 
-          <div className="stat-grid">
-            <StatTile
-              label="Forecast wind energy for the day"
-              value={fmtMWh(data.summary.forecastMwh)}
-              detail="Sum of the 24 hourly forecasts"
-            />
-            <StatTile
-              label="Typical error at this horizon"
-              value={fmtMW(data.summary.p50AbsError != null ? avgBand(points) : null)}
-              detail="Half-width of the shaded band, learned from January"
-            />
-            {showActual && (
-              <>
-                <StatTile
-                  label="Actual wind energy"
-                  value={fmtMWh(data.summary.actualMwh)}
-                  detail="Elexon FUELHH, metered"
-                />
-                <StatTile
-                  label="Forecast minus actual"
-                  value={fmtSigned(data.summary.bias)}
-                  detail={`Mean over the day, ${fmtPct(data.summary.nmaePct)} of mean output`}
-                  tone={data.summary.bias > 0 ? "over" : "under"}
-                />
-              </>
-            )}
-          </div>
-
-          <div className="card">
-            <div className="card-head">
-              <h3>Hourly wind generation, {dateLabel(data.deliveryDay)}</h3>
-              <p className="muted">
-                Shaded band: the range the outcome fell inside 80% of the time in January for forecasts
-                made this far ahead.
+          <div className="figure">
+            <div className="figure-head">
+              <h3 className="h3">Hourly wind generation, {dateLabel(data.deliveryDay)}</h3>
+              <p className="lead">
+                The band is where the outcome landed 80% of the time in January for forecasts made this far ahead.
               </p>
             </div>
-            <ResponsiveContainer width="100%" height={360}>
-              <ComposedChart data={points} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
+            <ResponsiveContainer width="100%" height={380}>
+              <ComposedChart data={points} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
                 <CartesianGrid stroke={COLORS.grid} vertical={false} />
-                <XAxis dataKey="hour" tick={{ fontSize: 12 }} tickLine={false} axisLine={{ stroke: COLORS.axis }} interval={2} />
+                <XAxis
+                  dataKey="hour"
+                  tick={{ fontSize: 12, fill: COLORS.tick, fontFamily: "var(--mono)" }}
+                  tickLine={false}
+                  axisLine={{ stroke: COLORS.axis }}
+                  interval="preserveStartEnd"
+                  minTickGap={28}
+                />
                 <YAxis
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: COLORS.tick, fontFamily: "var(--mono)" }}
                   tickLine={false}
                   axisLine={false}
-                  width={64}
+                  width={52}
                   tickFormatter={(v) => `${Math.round(v / 1000)} GW`}
                 />
                 <Tooltip
+                  cursor={{ stroke: COLORS.axis }}
                   content={
                     <ChartTooltip
-                      title={(d) => `${d.hour} GMT, ${d.horizonHours} h ahead`}
+                      title={(d) => `${d.hour} gmt, ${d.horizonHours} h ahead`}
                       rows={(d) =>
                         [
                           ["Forecast", fmtMW(d.forecast), COLORS.forecast],
@@ -174,34 +229,24 @@ export default function DecisionView({ meta, decisionTime }) {
                     />
                   }
                 />
-                <Legend iconType="plainline" wrapperStyle={{ fontSize: 13 }} />
-                <Area
-                  type="monotone"
-                  dataKey="band"
-                  name="Expected range (P10 to P90)"
-                  stroke="none"
-                  fill={COLORS.band}
-                  fillOpacity={0.35}
-                  isAnimationActive={false}
-                  legendType="rect"
-                />
+                <Area type="monotone" dataKey="band" stroke="none" fill={COLORS.band} fillOpacity={0.55} isAnimationActive={false} />
                 <Line
                   type="monotone"
                   dataKey="forecast"
-                  name="Forecast available at decision"
                   stroke={COLORS.forecast}
-                  strokeWidth={2.5}
+                  strokeWidth={2.25}
                   dot={false}
+                  activeDot={{ r: 5, strokeWidth: 2, stroke: "#f4f2ee" }}
                   isAnimationActive={false}
                 />
                 {showActual && (
                   <Line
                     type="monotone"
                     dataKey="actual"
-                    name="Actual generation"
                     stroke={COLORS.actual}
                     strokeWidth={2}
                     dot={false}
+                    activeDot={{ r: 5, strokeWidth: 2, stroke: "#f4f2ee" }}
                     isAnimationActive={false}
                   />
                 )}
@@ -209,9 +254,8 @@ export default function DecisionView({ meta, decisionTime }) {
                   <Line
                     type="monotone"
                     dataKey="hindsight"
-                    name="Last forecast before each hour"
                     stroke={COLORS.hindsight}
-                    strokeWidth={2}
+                    strokeWidth={1.75}
                     strokeDasharray="5 4"
                     dot={false}
                     isAnimationActive={false}
@@ -219,66 +263,92 @@ export default function DecisionView({ meta, decisionTime }) {
                 )}
               </ComposedChart>
             </ResponsiveContainer>
+            <div className="legend">
+              <span className="legend-item">
+                <span className="legend-swatch" style={{ background: COLORS.forecast }} />
+                forecast available at decision
+              </span>
+              <span className="legend-item">
+                <span className="legend-swatch legend-swatch-area" style={{ background: COLORS.band }} />
+                expected range, p10 to p90
+              </span>
+              {showActual && (
+                <span className="legend-item">
+                  <span className="legend-swatch" style={{ background: COLORS.actual }} />
+                  actual generation
+                </span>
+              )}
+              {showHindsight && (
+                <span className="legend-item">
+                  <span className="legend-swatch legend-swatch-dashed" style={{ color: COLORS.hindsight }} />
+                  last forecast before each hour
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="card">
-            <div className="card-head">
-              <h3>How the forecast moved before gate closure</h3>
-              <p className="muted">
-                Every vintage covering {dateLabel(data.deliveryDay)} that existed before the decision. The
-                marked row is the one the desk would have used.
+          <div className="figure">
+            <div className="figure-head">
+              <h3 className="h3">How the forecast moved before gate closure</h3>
+              <p className="lead">
+                Every issue covering {dateLabel(data.deliveryDay)} that existed before the decision. The highlighted
+                row is the one the desk would have used.
               </p>
             </div>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Published</th>
-                  <th className="num">Forecast for the day</th>
-                  {showActual && <th className="num">Mean absolute error</th>}
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {vintageRows.map((r) => (
-                  <tr key={r.publishTime} className={r.isUsed ? "row-used" : ""}>
-                    <td>{dateTimeLabel(r.publishTime)}</td>
-                    <td className="num">{fmtMWh(r.total)}</td>
-                    {showActual && <td className="num">{fmtMW(r.mae)}</td>}
-                    <td>{r.isUsed ? <span className="tag">Used for decision</span> : ""}</td>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>published</th>
+                    <th className="num">forecast for the day</th>
+                    {showActual && <th className="num">mean absolute error</th>}
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {vintageRows.map((r) => (
+                    <tr key={r.publishTime} className={r.isUsed ? "row-used" : ""}>
+                      <td>{dateTimeLabel(r.publishTime)}</td>
+                      <td className="num">{fmtMWh(r.total)}</td>
+                      {showActual && <td className="num">{fmtMW(r.mae)}</td>}
+                      <td className="num">{r.isUsed ? <span className="tag">used for decision</span> : ""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <details className="card details">
-            <summary>Hourly table</summary>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Hour</th>
-                  <th className="num">Horizon</th>
-                  <th className="num">Forecast</th>
-                  <th className="num">Expected low</th>
-                  <th className="num">Expected high</th>
-                  {showActual && <th className="num">Actual</th>}
-                  {showActual && <th className="num">Error</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {points.map((p) => (
-                  <tr key={p.startTime}>
-                    <td>{p.hour}</td>
-                    <td className="num">{p.horizonHours} h</td>
-                    <td className="num">{fmtMW(p.forecast)}</td>
-                    <td className="num">{fmtMW(p.bandLow)}</td>
-                    <td className="num">{fmtMW(p.bandHigh)}</td>
-                    {showActual && <td className="num">{fmtMW(p.actual)}</td>}
-                    {showActual && <td className="num">{fmtSigned(p.error)}</td>}
+          <details className="details">
+            <summary>hourly table</summary>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>hour</th>
+                    <th className="num">lead time</th>
+                    <th className="num">forecast</th>
+                    <th className="num">expected low</th>
+                    <th className="num">expected high</th>
+                    {showActual && <th className="num">actual</th>}
+                    {showActual && <th className="num">error</th>}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {points.map((p) => (
+                    <tr key={p.startTime}>
+                      <td>{p.hour}</td>
+                      <td className="num">{p.horizonHours} h</td>
+                      <td className="num">{fmtMW(p.forecast)}</td>
+                      <td className="num">{fmtMW(p.bandLow)}</td>
+                      <td className="num">{fmtMW(p.bandHigh)}</td>
+                      {showActual && <td className="num">{fmtMW(p.actual)}</td>}
+                      {showActual && <td className="num">{fmtSigned(p.error)}</td>}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </details>
         </>
       )}

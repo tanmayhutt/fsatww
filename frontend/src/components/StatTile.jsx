@@ -1,9 +1,9 @@
 export default function StatTile({ label, value, detail, tone }) {
   return (
-    <div className={`stat-tile${tone ? ` stat-tile-${tone}` : ""}`}>
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value}</div>
-      {detail && <div className="stat-detail">{detail}</div>}
+    <div className={`metric${tone ? ` metric-${tone}` : ""}`}>
+      <div className="metric-label">{label}</div>
+      <div className="metric-value">{value}</div>
+      {detail && <div className="metric-detail">{detail}</div>}
     </div>
   );
 }

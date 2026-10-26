@@ -4,7 +4,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   Line,
   LineChart,
   ReferenceArea,
@@ -19,6 +18,11 @@ import { COLORS } from "../theme.js";
 import { dateLabel, dateTimeLabel, fmtMW, fmtMWh, fmtNum, fmtPct, fmtSigned } from "../format.js";
 import StatTile from "./StatTile.jsx";
 import ChartTooltip from "./ChartTooltip.jsx";
+import { Loading } from "./Turbine.jsx";
+
+const tick = { fontSize: 12, fill: COLORS.tick, fontFamily: "var(--mono)" };
+const tickSmall = { ...tick, fontSize: 11 };
+const cursorFill = { fill: COLORS.grid };
 
 export default function AccuracyView({ decisionTime }) {
   const [data, setData] = useState(null);
@@ -26,6 +30,7 @@ export default function AccuracyView({ decisionTime }) {
 
   useEffect(() => {
     let cancelled = false;
+    setData(null);
     api
       .accuracy(decisionTime)
       .then((d) => !cancelled && setData(d))
@@ -36,7 +41,7 @@ export default function AccuracyView({ decisionTime }) {
   }, [decisionTime]);
 
   if (error) return <div className="notice notice-error">{error}</div>;
-  if (!data) return <div className="notice">Loading analysis</div>;
+  if (!data) return <Loading label="scoring every forecast" />;
 
   const s = data.dayAhead.summary;
   const horizon = data.byHorizon.filter((h) => h.count >= 30);
@@ -45,69 +50,62 @@ export default function AccuracyView({ decisionTime }) {
   const byHour = data.dayAhead.byHourOfDay.map((h) => ({ ...h, label: `${String(h.hour).padStart(2, "0")}:00` }));
   const byDay = data.dayAhead.byDay.map((d) => ({ ...d, label: dateLabel(d.deliveryDay).slice(4) }));
   const histogram = data.dayAhead.histogram;
+  const worstHour = byHour.reduce((a, b) => (b.mae > a.mae ? b : a), byHour[0]);
 
   return (
     <section>
-      <div className="headline">
-        <h2>How much to trust the day-ahead forecast</h2>
-        <p className="muted">
-          Every number below uses only the forecast that existed at {decisionTime} GMT the day before delivery,
-          across all 31 decision days in January 2026 ({fmtNum(s.count)} delivery hours).
+      <div className="section-head">
+        <div>
+          <p className="kicker">forecast accuracy, january 2026</p>
+          <h1 className="h1">How much to trust the day-ahead forecast.</h1>
+        </div>
+        <p className="lead">
+          Every number uses only the forecast that existed at {decisionTime} GMT the day before delivery, across
+          all 31 decision days in January 2026, {fmtNum(s.count)} delivery hours.
         </p>
       </div>
 
-      <div className="stat-grid">
+      <dl className="metrics metrics-bone">
         <StatTile
-          label="Mean absolute error"
+          label="mean absolute error"
           value={fmtMW(s.mae)}
-          detail={`${fmtPct(s.nmaePct)} of mean wind output (${fmtMW(s.meanActual)})`}
+          detail={`${fmtPct(s.nmaePct)} of mean wind output, ${fmtMW(s.meanActual)}`}
         />
         <StatTile
-          label="Bias"
+          label="bias, forecast minus actual"
           value={fmtSigned(s.bias)}
           detail={s.bias > 0 ? "Forecast runs above metered output" : "Forecast runs below metered output"}
           tone={s.bias > 0 ? "over" : "under"}
         />
-        <StatTile
-          label="1 in 10 hours missed by more than"
-          value={fmtMW(s.p90AbsError)}
-          detail={`Worst hour: ${fmtMW(s.maxAbsError)}`}
-        />
-        <StatTile label="Root mean square error" value={fmtMW(s.rmse)} detail="Penalises large misses" />
-      </div>
+        <StatTile label="1 in 10 hours missed by over" value={fmtMW(s.p90AbsError)} detail={`Worst hour: ${fmtMW(s.maxAbsError)}`} />
+        <StatTile label="root mean square error" value={fmtMW(s.rmse)} detail="Penalises large misses" />
+      </dl>
 
-      <div className="card">
-        <div className="card-head">
-          <h3>Error grows with lead time</h3>
-          <p className="muted">
-            Mean absolute error of every January forecast, grouped by how far ahead it was issued. The shaded
-            window is the range a day-ahead decision at {decisionTime} GMT has to live with: about 14 to 38
-            hours ahead.
+      <div className="figure">
+        <div className="figure-head">
+          <h3 className="h3">Error grows with lead time</h3>
+          <p className="lead">
+            Mean absolute error of every January forecast, grouped by how far ahead it was issued. The shaded window,
+            14 to 38 hours, is what a decision at {decisionTime} GMT has to live with.
           </p>
         </div>
         <ResponsiveContainer width="100%" height={320}>
-          <LineChart data={horizon} margin={{ top: 8, right: 16, bottom: 24, left: 8 }}>
+          <LineChart data={horizon} margin={{ top: 8, right: 8, bottom: 22, left: 0 }}>
             <CartesianGrid stroke={COLORS.grid} vertical={false} />
             <XAxis
               dataKey="horizonFrom"
               type="number"
               domain={[0, "dataMax"]}
               tickCount={10}
-              tick={{ fontSize: 12 }}
+              tick={tick}
               tickLine={false}
               axisLine={{ stroke: COLORS.axis }}
-              label={{ value: "Hours between forecast and delivery", position: "insideBottom", offset: -12, fontSize: 12 }}
+              label={{ value: "hours between forecast and delivery", position: "insideBottom", offset: -12, fontSize: 12, fill: COLORS.tick, fontFamily: "var(--mono)" }}
             />
-            <YAxis
-              tick={{ fontSize: 12 }}
-              tickLine={false}
-              axisLine={false}
-              width={64}
-              tickFormatter={(v) => `${fmtNum(v)}`}
-              label={{ value: "MW", angle: -90, position: "insideLeft", fontSize: 12 }}
-            />
-            <ReferenceArea x1={14} x2={38} fill={COLORS.band} fillOpacity={0.2} />
+            <YAxis tick={tick} tickLine={false} axisLine={false} width={52} tickFormatter={fmtNum} />
+            <ReferenceArea x1={14} x2={38} fill={COLORS.band} fillOpacity={0.35} />
             <Tooltip
+              cursor={{ stroke: COLORS.axis }}
               content={
                 <ChartTooltip
                   title={(d) => `${d.horizonFrom} to ${d.horizonTo} hours ahead`}
@@ -119,36 +117,49 @@ export default function AccuracyView({ decisionTime }) {
                 />
               }
             />
-            <Legend iconType="plainline" wrapperStyle={{ fontSize: 13, paddingTop: 16 }} />
-            <Line type="monotone" dataKey="mae" name="Mean absolute error" stroke={COLORS.forecast} strokeWidth={2.5} dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="bias" name="Bias (forecast minus actual)" stroke={COLORS.hindsight} strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="mae" stroke={COLORS.forecast} strokeWidth={2.25} dot={false} activeDot={{ r: 5, strokeWidth: 2, stroke: "#f4f2ee" }} isAnimationActive={false} />
+            <Line type="monotone" dataKey="bias" stroke={COLORS.hindsight} strokeWidth={1.75} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
+        <div className="legend">
+          <span className="legend-item">
+            <span className="legend-swatch" style={{ background: COLORS.forecast }} />
+            mean absolute error
+          </span>
+          <span className="legend-item">
+            <span className="legend-swatch legend-swatch-dashed" style={{ color: COLORS.hindsight }} />
+            bias, forecast minus actual
+          </span>
+          <span className="legend-item">
+            <span className="legend-swatch legend-swatch-area" style={{ background: COLORS.band }} />
+            day-ahead window
+          </span>
+        </div>
         {shortest && dayAheadWindow.length > 0 && (
-          <p className="muted small">
-            Forecasts issued under two hours ahead still miss by {fmtMW(shortest.mae)} on average. Across the day-ahead
-            window the error is {fmtMW(avg(dayAheadWindow, "mae"))}, so waiting for a fresher forecast would not have
-            closed most of the gap.
+          <p className="insight">
+            Forecasts issued under two hours ahead still miss by <strong>{fmtMW(shortest.mae)}</strong> on average.
+            Across the day-ahead window the miss is <strong>{fmtMW(avg(dayAheadWindow, "mae"))}</strong>, so waiting
+            for a fresher forecast would not have closed most of the gap. The bias is the bigger lever.
           </p>
         )}
       </div>
 
       <div className="two-up">
-        <div className="card">
-          <div className="card-head">
-            <h3>Error by hour of delivery</h3>
-            <p className="muted">Mean absolute error of the day-ahead forecast for each hour of the day.</p>
+        <div className="figure">
+          <div className="figure-head">
+            <h3 className="h3">Error by hour of delivery</h3>
+            <p className="lead">Mean absolute error of the day-ahead forecast, per hour of the day.</p>
           </div>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={byHour} margin={{ top: 8, right: 8, bottom: 8, left: 8 }} barCategoryGap={2}>
+            <BarChart data={byHour} margin={{ top: 8, right: 4, bottom: 4, left: 0 }} barCategoryGap={2}>
               <CartesianGrid stroke={COLORS.grid} vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={{ stroke: COLORS.axis }} interval={3} />
-              <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={56} tickFormatter={fmtNum} />
+              <XAxis dataKey="label" tick={tickSmall} tickLine={false} axisLine={{ stroke: COLORS.axis }} interval="preserveStartEnd" minTickGap={28} />
+              <YAxis tick={tick} tickLine={false} axisLine={false} width={46} tickFormatter={fmtNum} />
               <Tooltip
-                cursor={{ fill: COLORS.grid, fillOpacity: 0.5 }}
+                cursor={cursorFill}
                 content={
                   <ChartTooltip
-                    title={(d) => `${d.label} GMT`}
+                    title={(d) => `${d.label} gmt`}
                     rows={(d) => [
                       ["Mean absolute error", fmtMW(d.mae), COLORS.bar],
                       ["Bias", fmtSigned(d.bias)],
@@ -157,56 +168,76 @@ export default function AccuracyView({ decisionTime }) {
                   />
                 }
               />
-              <Bar dataKey="mae" name="Mean absolute error" fill={COLORS.bar} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="mae" radius={[2, 2, 0, 0]} isAnimationActive={false}>
+                {byHour.map((h) => (
+                  <Cell key={h.hour} fill={h.hour === worstHour.hour ? COLORS.actual : COLORS.bar} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
+          <p className="insight">
+            Hardest hour to forecast: <strong>{worstHour.label} GMT</strong>, {fmtMW(worstHour.mae)} average miss.
+          </p>
         </div>
 
-        <div className="card">
-          <div className="card-head">
-            <h3>Where the errors land</h3>
-            <p className="muted">Hourly forecast minus actual, all 740 day-ahead hours. Positive means the forecast was too high.</p>
+        <div className="figure">
+          <div className="figure-head">
+            <h3 className="h3">Where the errors land</h3>
+            <p className="lead">
+              Hourly forecast minus actual, all {fmtNum(s.count)} day-ahead hours. Right of zero means the forecast was
+              too high.
+            </p>
           </div>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={histogram} margin={{ top: 8, right: 8, bottom: 8, left: 8 }} barCategoryGap={2}>
+            <BarChart data={histogram} margin={{ top: 8, right: 4, bottom: 4, left: 0 }} barCategoryGap={2}>
               <CartesianGrid stroke={COLORS.grid} vertical={false} />
-              <XAxis dataKey="from" tick={{ fontSize: 11 }} tickLine={false} axisLine={{ stroke: COLORS.axis }} tickFormatter={(v) => fmtNum(v)} interval={1} />
-              <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={40} />
+              <XAxis dataKey="from" tick={tickSmall} tickLine={false} axisLine={{ stroke: COLORS.axis }} tickFormatter={(v) => fmtNum(v)} interval="preserveStartEnd" minTickGap={30} />
+              <YAxis tick={tick} tickLine={false} axisLine={false} width={34} />
               <ReferenceLine x={0} stroke={COLORS.hindsight} />
               <Tooltip
-                cursor={{ fill: COLORS.grid, fillOpacity: 0.5 }}
+                cursor={cursorFill}
                 content={
                   <ChartTooltip
                     title={(d) => `${fmtSigned(d.from)} to ${fmtSigned(d.to)}`}
-                    rows={(d) => [["Hours", fmtNum(d.count), COLORS.bar]]}
+                    rows={(d) => [["Hours", fmtNum(d.count), d.from >= 0 ? COLORS.bar : COLORS.barMuted]]}
                   />
                 }
               />
-              <Bar dataKey="count" name="Hours" radius={[3, 3, 0, 0]} isAnimationActive={false}>
+              <Bar dataKey="count" radius={[2, 2, 0, 0]} isAnimationActive={false}>
                 {histogram.map((b) => (
                   <Cell key={b.from} fill={b.from >= 0 ? COLORS.bar : COLORS.barMuted} />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          <div className="legend">
+            <span className="legend-item">
+              <span className="legend-swatch legend-swatch-bar" style={{ background: COLORS.bar }} />
+              forecast too high
+            </span>
+            <span className="legend-item">
+              <span className="legend-swatch legend-swatch-bar" style={{ background: COLORS.barMuted }} />
+              forecast too low
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-head">
-          <h3>Day by day</h3>
-          <p className="muted">Daily wind energy, forecast against metered, for every delivery day bought in January.</p>
+      <div className="figure">
+        <div className="figure-head">
+          <h3 className="h3">Day by day</h3>
+          <p className="lead">Daily wind energy, forecast against metered, for every delivery day bought in January.</p>
         </div>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={byDay} margin={{ top: 8, right: 8, bottom: 8, left: 8 }} barCategoryGap={4} barGap={2}>
+          <BarChart data={byDay} margin={{ top: 8, right: 4, bottom: 4, left: 0 }} barCategoryGap={4} barGap={2}>
             <CartesianGrid stroke={COLORS.grid} vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={{ stroke: COLORS.axis }} interval={2} />
-            <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={64} tickFormatter={(v) => `${Math.round(v / 1000)} GWh`} />
+            <XAxis dataKey="label" tick={tickSmall} tickLine={false} axisLine={{ stroke: COLORS.axis }} interval="preserveStartEnd" minTickGap={24} />
+            <YAxis tick={tick} tickLine={false} axisLine={false} width={56} tickFormatter={(v) => `${Math.round(v / 1000)} GWh`} />
             <Tooltip
-              cursor={{ fill: COLORS.grid, fillOpacity: 0.5 }}
+              cursor={cursorFill}
               content={
                 <ChartTooltip
-                  title={(d) => `Delivery ${dateLabel(d.deliveryDay)}`}
+                  title={(d) => `delivery ${dateLabel(d.deliveryDay).toLowerCase()}`}
                   rows={(d) => [
                     ["Forecast", fmtMWh(d.forecastMwh), COLORS.forecast],
                     ["Actual", fmtMWh(d.actualMwh), COLORS.actual],
@@ -216,73 +247,84 @@ export default function AccuracyView({ decisionTime }) {
                 />
               }
             />
-            <Legend wrapperStyle={{ fontSize: 13 }} />
-            <Bar dataKey="forecastMwh" name="Forecast" fill={COLORS.forecast} radius={[3, 3, 0, 0]} isAnimationActive={false} />
-            <Bar dataKey="actualMwh" name="Actual" fill={COLORS.actual} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+            <Bar dataKey="forecastMwh" fill={COLORS.forecast} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+            <Bar dataKey="actualMwh" fill={COLORS.actual} radius={[2, 2, 0, 0]} isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>
-        <details className="details">
-          <summary>Daily table</summary>
+        <div className="legend">
+          <span className="legend-item">
+            <span className="legend-swatch legend-swatch-bar" style={{ background: COLORS.forecast }} />
+            forecast
+          </span>
+          <span className="legend-item">
+            <span className="legend-swatch legend-swatch-bar" style={{ background: COLORS.actual }} />
+            actual
+          </span>
+        </div>
+        <details className="details" style={{ marginTop: 18 }}>
+          <summary>daily table</summary>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>delivery day</th>
+                  <th>forecast used</th>
+                  <th className="num">forecast</th>
+                  <th className="num">actual</th>
+                  <th className="num">mae</th>
+                  <th className="num">bias</th>
+                  <th className="num">worst hour</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.dayAhead.byDay.map((d) => (
+                  <tr key={d.deliveryDay}>
+                    <td>{dateLabel(d.deliveryDay)}</td>
+                    <td>{dateTimeLabel(d.publishTime)}</td>
+                    <td className="num">{fmtMWh(d.forecastMwh)}</td>
+                    <td className="num">{fmtMWh(d.actualMwh)}</td>
+                    <td className="num">{fmtMW(d.mae)}</td>
+                    <td className="num">{fmtSigned(d.bias)}</td>
+                    <td className="num">{fmtMW(d.maxAbsError)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+
+      <details className="details">
+        <summary>error by lead time, full table</summary>
+        <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Delivery day</th>
-                <th>Forecast used</th>
-                <th className="num">Forecast</th>
-                <th className="num">Actual</th>
-                <th className="num">MAE</th>
-                <th className="num">Bias</th>
-                <th className="num">Worst hour</th>
+                <th>hours ahead</th>
+                <th className="num">forecast hours</th>
+                <th className="num">mae</th>
+                <th className="num">bias</th>
+                <th className="num">p90 abs error</th>
+                <th className="num">mae / mean output</th>
               </tr>
             </thead>
             <tbody>
-              {data.dayAhead.byDay.map((d) => (
-                <tr key={d.deliveryDay}>
-                  <td>{dateLabel(d.deliveryDay)}</td>
-                  <td>{dateTimeLabel(d.publishTime)}</td>
-                  <td className="num">{fmtMWh(d.forecastMwh)}</td>
-                  <td className="num">{fmtMWh(d.actualMwh)}</td>
-                  <td className="num">{fmtMW(d.mae)}</td>
-                  <td className="num">{fmtSigned(d.bias)}</td>
-                  <td className="num">{fmtMW(d.maxAbsError)}</td>
+              {horizon.map((h) => (
+                <tr key={h.horizonFrom} className={h.horizonFrom >= 14 && h.horizonTo <= 38 ? "row-used" : ""}>
+                  <td>
+                    {h.horizonFrom} to {h.horizonTo}
+                  </td>
+                  <td className="num">{fmtNum(h.count)}</td>
+                  <td className="num">{fmtMW(h.mae)}</td>
+                  <td className="num">{fmtSigned(h.bias)}</td>
+                  <td className="num">{fmtMW(h.p90AbsError)}</td>
+                  <td className="num">{fmtPct(h.nmaePct)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </details>
-      </div>
-
-      <div className="card">
-        <div className="card-head">
-          <h3>Error by horizon, table</h3>
         </div>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Hours ahead</th>
-              <th className="num">Forecast hours</th>
-              <th className="num">MAE</th>
-              <th className="num">Bias</th>
-              <th className="num">P90 abs error</th>
-              <th className="num">MAE / mean output</th>
-            </tr>
-          </thead>
-          <tbody>
-            {horizon.map((h) => (
-              <tr key={h.horizonFrom} className={h.horizonFrom >= 14 && h.horizonTo <= 38 ? "row-used" : ""}>
-                <td>
-                  {h.horizonFrom} to {h.horizonTo}
-                </td>
-                <td className="num">{fmtNum(h.count)}</td>
-                <td className="num">{fmtMW(h.mae)}</td>
-                <td className="num">{fmtSigned(h.bias)}</td>
-                <td className="num">{fmtMW(h.p90AbsError)}</td>
-                <td className="num">{fmtPct(h.nmaePct)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      </details>
     </section>
   );
 }
