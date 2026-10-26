@@ -571,35 +571,56 @@ summary:focus-visible {
 
 .details {
   border-top: 1px solid var(--rule);
+  padding-top: 18px;
 }
 .details summary {
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  padding: 14px 0;
-  color: var(--muted);
-  list-style: none;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  padding: 11px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--surface-btn, transparent);
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius-pill);
+  list-style: none;
+  transition: background-color 0.2s, color 0.2s;
 }
 .details summary::-webkit-details-marker {
   display: none;
 }
-.details summary::before {
-  content: "+";
-  font-size: 16px;
-  line-height: 1;
+.details summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition: transform 0.2s;
 }
-.details[open] summary::before {
-  content: "\2212";
+.details[open] summary::after {
+  transform: rotate(-135deg) translate(-1px, -1px);
 }
 .details summary:hover {
-  color: var(--fg);
+  background: var(--ink);
+  color: var(--bone);
 }
 .details[open] summary {
-  border-bottom: 1px solid var(--rule);
-  margin-bottom: 4px;
+  background: var(--ink);
+  color: var(--bone);
+  margin-bottom: 18px;
+}
+.band-ink .details summary,
+.panel .details summary {
+  border-color: var(--bone);
+  color: var(--bone);
+}
+.band-ink .details summary:hover,
+.band-ink .details[open] summary {
+  background: var(--bone);
+  color: var(--ink);
 }
 
 /* Notices and loading */
