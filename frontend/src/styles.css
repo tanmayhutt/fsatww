@@ -571,19 +571,24 @@ summary:focus-visible {
 
 .details {
   border-top: 1px solid var(--rule);
-  padding-top: 18px;
+  padding-top: 28px;
 }
 .details summary {
   cursor: pointer;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 18px;
-  font-size: 14px;
+  justify-content: center;
+  gap: 12px;
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding: 18px 28px;
+  font-family: var(--display);
+  font-size: 17px;
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--ink);
-  background: var(--surface-btn, transparent);
-  border: 1.5px solid var(--ink);
+  background: transparent;
+  border: 2px solid var(--ink);
   border-radius: var(--radius-pill);
   list-style: none;
   transition: background-color 0.2s, color 0.2s;
@@ -593,8 +598,8 @@ summary:focus-visible {
 }
 .details summary::after {
   content: "";
-  width: 7px;
-  height: 7px;
+  width: 9px;
+  height: 9px;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
   transform: rotate(45deg) translate(-1px, -1px);
