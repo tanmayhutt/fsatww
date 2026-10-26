@@ -39,8 +39,8 @@ export const SOURCES = {
 export default function Dither({
   height = 420,
   cell = 4,
-  from = "#1e1d1b",
-  to = "#f4f2ee",
+  from = "#171713",
+  to = "#f4f1e8",
   source = "streaks",
   wave = true,
   animate = true,

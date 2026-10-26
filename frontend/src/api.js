@@ -19,4 +19,5 @@ export const api = {
   meta: () => get("/api/meta"),
   decision: (day, decisionTime) => get("/api/decision", { day, decisionTime }),
   accuracy: (decisionTime) => get("/api/accuracy", { decisionTime }),
+  actuals: () => get("/api/actuals"),
 };

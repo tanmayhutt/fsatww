@@ -164,6 +164,19 @@ def accuracy(decisionTime: str = Query(DEFAULT_DECISION_TIME.strftime("%H:%M")))
     }
 
 
+@app.get("/api/actuals")
+def actuals() -> dict:
+    """Hourly metered wind for the whole window. Drives the hero animation."""
+    d = data()
+    hours = sorted(d.actuals)
+    return {
+        "start": iso(hours[0]),
+        "stepMinutes": 60,
+        "maxMw": round(max(d.actuals.values()), 1),
+        "mw": [round(d.actuals[h], 1) for h in hours],
+    }
+
+
 @app.get("/api/vintages")
 def vintages(day: date = Query(...)) -> dict:
     """Every forecast vintage covering a delivery day, for the tech walkthrough."""

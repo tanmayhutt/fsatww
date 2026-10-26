@@ -1,13 +1,14 @@
 // Chart colours. Forecast and actual are the two entities on every chart and
-// keep the same hue everywhere so a reader learns them once.
+// keep the same hue everywhere so a reader learns them once. Validated as a
+// pair on the cream surface for CVD separation and contrast.
 export const COLORS = {
-  forecast: "#5573e3",
-  actual: "#e9683c",
-  hindsight: "#6b6a66",
-  band: "#c7daf6",
-  bar: "#5573e3",
-  barMuted: "#d8d8ca",
-  grid: "rgba(30, 29, 27, 0.12)",
-  axis: "rgba(30, 29, 27, 0.4)",
-  tick: "#6b6a66",
+  forecast: "#5b63f5",
+  actual: "#e8683f",
+  hindsight: "#5f5f57",
+  band: "#c9ccff",
+  bar: "#5b63f5",
+  barMuted: "#d9d6c9",
+  grid: "rgba(23, 23, 19, 0.1)",
+  axis: "rgba(23, 23, 19, 0.35)",
+  tick: "#6b6a62",
 };

@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { api } from "../api.js";
+import { ScrollTrigger } from "../motion.js";
 import { COLORS } from "../theme.js";
 import {
   addDays,
@@ -24,6 +25,7 @@ import {
 import StatTile from "./StatTile.jsx";
 import ChartTooltip from "./ChartTooltip.jsx";
 import { Loading } from "./Turbine.jsx";
+import VintageTimeline from "./VintageTimeline.jsx";
 
 const Chevron = ({ direction }) => (
   <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
@@ -50,7 +52,11 @@ export default function DecisionView({ meta, decisionTime }) {
     setError(null);
     api
       .decision(day, decisionTime)
-      .then((d) => !cancelled && setData(d))
+      .then((d) => {
+        if (cancelled) return;
+        setData(d);
+        requestAnimationFrame(() => ScrollTrigger.refresh());
+      })
       .catch((e) => !cancelled && setError(e.message));
     return () => {
       cancelled = true;
@@ -295,6 +301,12 @@ export default function DecisionView({ meta, decisionTime }) {
                 row is the one the desk would have used.
               </p>
             </div>
+            <VintageTimeline
+              history={data.history}
+              decisionAt={data.decisionAt}
+              publishTime={data.publishTime}
+              deliveryDay={data.deliveryDay}
+            />
             <div className="table-wrap">
               <table className="table">
                 <thead>

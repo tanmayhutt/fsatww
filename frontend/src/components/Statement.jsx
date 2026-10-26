@@ -24,7 +24,7 @@ export default function Statement() {
   return (
     <section className="statement" ref={ref} aria-label="Statement">
       <div className="statement-bg" aria-hidden="true">
-        <Dither height={900} cell={5} from="#ecd9bc" to="#1e1d1b" source="radial" wave={false} animate={false} />
+        <Dither height={900} cell={5} from="#7a83ff" to="#f4f1e8" source="radial" wave={false} animate={false} />
       </div>
       <div className="statement-fade" aria-hidden="true" />
       <p className="kicker">the rule behind every number</p>
