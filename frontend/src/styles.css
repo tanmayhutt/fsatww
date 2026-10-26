@@ -1748,3 +1748,69 @@ main {
     grid-template-columns: 1fr;
   }
 }
+
+/* Hourly table emphasis */
+
+.table td.cell-plan {
+  background: rgba(216, 255, 107, 0.45);
+  font-weight: 700;
+  color: var(--ink);
+}
+.table th:nth-child(4) {
+  color: var(--ink);
+}
+.table td.cell-over {
+  color: var(--apricot);
+  font-weight: 600;
+}
+.table td.cell-under {
+  color: var(--cobalt);
+  font-weight: 600;
+}
+.cell-flag {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  font-family: var(--display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--stone);
+  border-radius: var(--radius-pill);
+  vertical-align: middle;
+}
+.table-key {
+  display: flex;
+  gap: 10px 22px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.table-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.key-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+.key-plan {
+  background: rgba(216, 255, 107, 0.6);
+  border: 1px solid rgba(23, 23, 19, 0.25);
+}
+.key-over {
+  background: var(--apricot);
+}
+.key-under {
+  background: var(--cobalt);
+}
+.key-flag {
+  background: var(--stone);
+  border: 1px solid var(--rule-strong);
+}

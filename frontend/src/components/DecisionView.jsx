@@ -388,7 +388,7 @@ export default function DecisionView({ meta, decisionTime }) {
                     <th className="num">expected low</th>
                     <th className="num">expected high</th>
                     {showActual && <th className="num">actual</th>}
-                    {showActual && <th className="num">error</th>}
+                    {showActual && <th className="num">forecast minus actual</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -399,15 +399,42 @@ export default function DecisionView({ meta, decisionTime }) {
                       </td>
                       <td className="num">{p.horizonHours} h</td>
                       <td className="num">{fmtMW(p.forecast)}</td>
-                      <td className="num">{fmtMW(p.planFor)}</td>
+                      <td className="num cell-plan">{fmtMW(p.planFor)}</td>
                       <td className="num">{fmtMW(p.bandLow)}</td>
                       <td className="num">{fmtMW(p.bandHigh)}</td>
                       {showActual && <td className="num">{fmtMW(p.actual)}</td>}
-                      {showActual && <td className="num">{fmtSigned(p.error)}</td>}
+                      {showActual && (
+                        <td className={`num ${p.error > 0 ? "cell-over" : "cell-under"}`}>
+                          {fmtSigned(p.error)}
+                          {p.bandLow != null && (p.actual < p.bandLow || p.actual > p.bandHigh) && (
+                            <span className="cell-flag" title="Wind landed outside the expected range">
+                              outside range
+                            </span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="table-key">
+              <span>
+                <i className="key-swatch key-plan" /> plan for: the forecast with the known bias removed, the number to buy on
+              </span>
+              {showActual && (
+                <>
+                  <span>
+                    <i className="key-swatch key-over" /> forecast ran high
+                  </span>
+                  <span>
+                    <i className="key-swatch key-under" /> forecast ran low
+                  </span>
+                  <span>
+                    <i className="key-swatch key-flag" /> hours where the wind landed outside the expected range
+                  </span>
+                </>
+              )}
             </div>
           </details>
         </>
