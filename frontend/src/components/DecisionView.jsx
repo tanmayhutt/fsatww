@@ -92,10 +92,14 @@ export default function DecisionView({ meta, decisionTime }) {
           <p className="kicker">day-ahead desk</p>
           <h2 className="h2" id="desk-title">Pick a day. See only what the desk could see.</h2>
         </div>
-        <p className="lead">
-          Pick a decision day. The desk shows the newest Elexon forecast that existed at gate closure, and the
-          range the outcome usually falls in for a forecast made that far ahead. Nothing published later is used.
-        </p>
+        <div>
+          <p className="lead">
+            Pick a decision day. The desk shows the newest Elexon forecast that existed at gate closure, the wind to
+            plan for once the known bias is removed, and the range the outcome usually falls in. Nothing published
+            later is used.
+          </p>
+          <p className="scope">Pilot scope: purchase decisions made in January 2026, from a fixed Elexon snapshot. Not live data.</p>
+        </div>
       </div>
 
       <div className="controls" data-reveal>
@@ -167,27 +171,49 @@ export default function DecisionView({ meta, decisionTime }) {
             </div>
             <dl className="metrics">
               <StatTile
-                label="forecast wind for the day"
+                label="forecast says"
                 value={fmtMWh(data.summary.forecastMwh)}
-                detail="Sum of the 24 hourly forecasts"
+                detail="Sum of the 24 hourly forecasts, as published"
+                tone="plain"
+              />
+              <StatTile
+                label="wind to plan for"
+                value={fmtMWh(data.summary.planForMwh)}
+                detail={
+                  data.bias.days > 0
+                    ? `Forecast minus the ${fmtMW(data.bias.bias)} it ran high over the ${data.bias.days} earlier ${data.bias.days === 1 ? "day" : "days"}`
+                    : "No earlier days to learn from yet, so the raw forecast"
+                }
               />
               <StatTile
                 label="typical miss at this lead time"
                 value={fmtMW(avgBand(points))}
-                detail="Half-width of the expected range, learned from January"
+                detail="Half-width of the shaded range on the chart"
+                tone="plain"
               />
               {showActual && (
                 <>
                   <StatTile
-                    label="actual wind for the day"
+                    label="what the wind did"
                     value={fmtMWh(data.summary.actualMwh)}
                     detail="Elexon FUELHH, metered"
+                    tone="plain"
                   />
                   <StatTile
                     label="forecast minus actual"
                     value={fmtSigned(data.summary.bias)}
-                    detail={`Mean over the day, ${fmtPct(data.summary.nmaePct)} of mean output`}
+                    detail={`Average per hour. ${data.summary.bias > 0 ? "Forecast ran high" : "Forecast ran low"}, ${fmtPct(data.summary.nmaePct)} of the wind`}
                     tone={data.summary.bias > 0 ? "over" : "under"}
+                  />
+                  <StatTile
+                    label="plan-for minus actual"
+                    value={fmtSigned(data.summary.corrected.bias)}
+                    detail={
+                      data.bias.days > 0
+                        ? `Typical miss ${fmtMW(data.summary.corrected.mae)} instead of ${fmtMW(data.summary.mae)}`
+                        : "Same as the forecast on this day"
+                    }
+                    tone={Math.abs(data.summary.corrected.bias) < Math.abs(data.summary.bias) ? "good" : "plain"}
                   />
                 </>
               )}
@@ -226,7 +252,8 @@ export default function DecisionView({ meta, decisionTime }) {
                       title={(d) => `${d.hour} gmt, ${d.horizonHours} h ahead`}
                       rows={(d) =>
                         [
-                          ["Forecast", fmtMW(d.forecast), COLORS.forecast],
+                          ["Forecast says", fmtMW(d.forecast), COLORS.forecast],
+                          data.bias.days > 0 && ["Wind to plan for", fmtMW(d.planFor), COLORS.plan],
                           ["Expected range", `${fmtMW(d.bandLow)} to ${fmtMW(d.bandHigh)}`, COLORS.band],
                           showActual && ["Actual", fmtMW(d.actual), COLORS.actual],
                           showHindsight && ["Last forecast before hour", fmtMW(d.hindsight), COLORS.hindsight],
@@ -245,6 +272,17 @@ export default function DecisionView({ meta, decisionTime }) {
                   activeDot={{ r: 5, strokeWidth: 2, stroke: "#f4f2ee" }}
                   isAnimationActive={false}
                 />
+                {data.bias.days > 0 && (
+                  <Line
+                    type="monotone"
+                    dataKey="planFor"
+                    stroke={COLORS.plan}
+                    strokeWidth={1.75}
+                    strokeDasharray="6 4"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                )}
                 {showActual && (
                   <Line
                     type="monotone"
@@ -272,8 +310,14 @@ export default function DecisionView({ meta, decisionTime }) {
             <div className="legend">
               <span className="legend-item">
                 <span className="legend-swatch" style={{ background: COLORS.forecast }} />
-                forecast available at decision
+                forecast as published
               </span>
+              {data.bias.days > 0 && (
+                <span className="legend-item">
+                  <span className="legend-swatch legend-swatch-dashed" style={{ color: COLORS.plan }} />
+                  wind to plan for, bias removed
+                </span>
+              )}
               <span className="legend-item">
                 <span className="legend-swatch legend-swatch-area" style={{ background: COLORS.band }} />
                 expected range, p10 to p90
@@ -340,6 +384,7 @@ export default function DecisionView({ meta, decisionTime }) {
                     <th>hour</th>
                     <th className="num">lead time</th>
                     <th className="num">forecast</th>
+                    <th className="num">plan for</th>
                     <th className="num">expected low</th>
                     <th className="num">expected high</th>
                     {showActual && <th className="num">actual</th>}
@@ -352,6 +397,7 @@ export default function DecisionView({ meta, decisionTime }) {
                       <td>{p.hour}</td>
                       <td className="num">{p.horizonHours} h</td>
                       <td className="num">{fmtMW(p.forecast)}</td>
+                      <td className="num">{fmtMW(p.planFor)}</td>
                       <td className="num">{fmtMW(p.bandLow)}</td>
                       <td className="num">{fmtMW(p.bandHigh)}</td>
                       {showActual && <td className="num">{fmtMW(p.actual)}</td>}

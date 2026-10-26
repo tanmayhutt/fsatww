@@ -22,7 +22,12 @@ from .analysis import (
     LAST_DECISION_DAY,
     UTC,
     WindData,
+    band_coverage,
+    bias_for_day,
+    corrected_pairs,
     daily_profile,
+    day_ahead_by_day,
+    rolling_bias,
     error_histogram,
     horizon_profile,
     hour_of_day_profile,
@@ -120,7 +125,15 @@ def decision(
             p["bandLow"] = round(p["forecast"] - row["errorP90"], 1)
             p["bandHigh"] = round(p["forecast"] - row["errorP10"], 1)
 
+    # Wind to plan for: the forecast minus the bias learned from earlier
+    # decision days only. The first day of the study has nothing to learn from.
+    bias = bias_for_day(d, t, day)
+    for p in usable:
+        p["planFor"] = round(p["forecast"] - bias["bias"], 1)
+        p["errorCorrected"] = round(p["planFor"] - p["actual"], 1)
+
     errors = [p["error"] for p in usable]
+    corrected = [p["errorCorrected"] for p in usable]
     return {
         "decisionAt": iso(decision_at),
         "deliveryDay": delivery_day.isoformat(),
@@ -129,10 +142,13 @@ def decision(
         "points": usable,
         "history": history,
         "hindsight": hindsight,
+        "bias": bias,
         "summary": {
             "forecastMwh": round(sum(p["forecast"] for p in usable), 0),
+            "planForMwh": round(sum(p["planFor"] for p in usable), 0),
             "actualMwh": round(sum(p["actual"] for p in usable), 0),
             **summarise(errors, [p["actual"] for p in usable]),
+            "corrected": summarise(corrected, [p["actual"] for p in usable]),
         },
     }
 
@@ -151,14 +167,37 @@ def accuracy(decisionTime: str = Query(DEFAULT_DECISION_TIME.strftime("%H:%M")))
         ]
     )
     actuals = [p["actual"] for p in day_ahead]
+
+    # Raw against corrected, on the same days: every decision day that had at
+    # least one earlier day to learn the bias from.
+    table = rolling_bias(d, t)
+    corrected = corrected_pairs(d, t)
+    raw_same_days = [p for day, ps in day_ahead_by_day(d, t) if table[day]["days"] > 0 for p in ps]
+    raw_summary = summarise([p["error"] for p in raw_same_days], [p["actual"] for p in raw_same_days])
+    corrected_summary = summarise([p["errorCorrected"] for p in corrected], [p["actual"] for p in corrected])
+    by_day = daily_profile(day_ahead)
+
     return {
         "decisionTime": t.strftime("%H:%M"),
         "dayAhead": {
             "summary": summarise([p["error"] for p in day_ahead], actuals),
+            "daysOver": sum(1 for row in by_day if row["bias"] > 0),
+            "days": len(by_day),
             "byHourOfDay": hour_of_day_profile(day_ahead),
-            "byDay": daily_profile(day_ahead),
+            "byDay": by_day,
             "histogram": error_histogram(day_ahead),
         },
+        "correction": {
+            "days": len({p["startTime"][:10] for p in corrected}),
+            "hours": len(corrected),
+            "raw": raw_summary,
+            "corrected": corrected_summary,
+            "improvementPct": round(100 * (1 - corrected_summary["mae"] / raw_summary["mae"]), 1)
+            if raw_summary.get("mae")
+            else None,
+            "finalBias": table[max(table)]["bias"] if table else None,
+        },
+        "bandCheck": band_coverage(d, t),
         "byHorizon": horizon_profile(all_pairs),
         "pairCount": len(all_pairs),
     }

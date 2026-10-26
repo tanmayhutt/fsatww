@@ -217,3 +217,90 @@ def error_histogram(pairs: list[dict], width: int = 500) -> list[dict]:
     for p in pairs:
         buckets[int(math.floor(p["error"] / width)) * width] += 1
     return [{"from": b, "to": b + width, "count": buckets[b]} for b in sorted(buckets)]
+
+
+# Bias correction and band checking.
+#
+# Both follow the same rule as everything else: when a day is scored, only
+# information from other days is used. The correction for decision day D is
+# learned from decision days before D. The band for day D is learned from the
+# other days of the month.
+
+
+def day_ahead_by_day(data: WindData, decision_time: time) -> list[tuple[date, list[dict]]]:
+    """Day-ahead pairs grouped by decision day, in order."""
+    out = []
+    day = FIRST_DECISION_DAY
+    while day <= LAST_DECISION_DAY:
+        decision_at = datetime.combine(day, decision_time, UTC)
+        vintage = data.latest_publish_before(decision_at)
+        pairs = data.pairs(data.day_forecast(vintage, day + timedelta(days=1))) if vintage else []
+        if pairs:
+            out.append((day, pairs))
+        day += timedelta(days=1)
+    return out
+
+
+def rolling_bias(data: WindData, decision_time: time) -> dict[date, dict]:
+    """For each decision day, the mean signed error of all earlier decision
+    days. The first day has nothing to learn from and gets no correction."""
+    out: dict[date, dict] = {}
+    total = 0.0
+    count = 0
+    days = 0
+    for day, pairs in day_ahead_by_day(data, decision_time):
+        out[day] = {"bias": round(total / count, 1) if count else 0.0, "days": days}
+        total += sum(p["error"] for p in pairs)
+        count += len(pairs)
+        days += 1
+    return out
+
+
+def bias_for_day(data: WindData, decision_time: time, day: date) -> dict:
+    """Bias available to a decision on `day`, including days outside the
+    study window (nothing learned) and days after it (whole month)."""
+    table = rolling_bias(data, decision_time)
+    if day in table:
+        return table[day]
+    earlier = [d for d in table if d < day]
+    if not earlier:
+        return {"bias": 0.0, "days": 0}
+    last = max(earlier)
+    pairs = [p for d, ps in day_ahead_by_day(data, decision_time) if d <= last for p in ps]
+    return {"bias": round(statistics.fmean(p["error"] for p in pairs), 1), "days": len(earlier) + 1}
+
+
+def corrected_pairs(data: WindData, decision_time: time) -> list[dict]:
+    """Day-ahead pairs with the rolling correction applied. Days with no
+    history are skipped, so raw and corrected can be compared fairly."""
+    table = rolling_bias(data, decision_time)
+    out = []
+    for day, pairs in day_ahead_by_day(data, decision_time):
+        b = table[day]
+        if b["days"] == 0:
+            continue
+        for p in pairs:
+            plan = round(p["forecast"] - b["bias"], 1)
+            out.append({**p, "planFor": plan, "errorCorrected": round(plan - p["actual"], 1), "biasApplied": b["bias"]})
+    return out
+
+
+def band_coverage(data: WindData, decision_time: time, bucket_hours: int = 2) -> dict:
+    """How often the metered value fell inside the P10 to P90 band, when the
+    band for each day is learned from the other days only."""
+    by_day = day_ahead_by_day(data, decision_time)
+    inside = 0
+    total = 0
+    for day, pairs in by_day:
+        others = [p for d, ps in by_day if d != day for p in ps]
+        profile = {row["horizonFrom"]: row for row in horizon_profile(others, bucket_hours)}
+        for p in pairs:
+            row = profile.get(int(p["horizonHours"] // bucket_hours) * bucket_hours)
+            if not row or not row.get("count"):
+                continue
+            low = p["forecast"] - row["errorP90"]
+            high = p["forecast"] - row["errorP10"]
+            total += 1
+            if low <= p["actual"] <= high:
+                inside += 1
+    return {"inside": inside, "total": total, "coveragePct": round(100 * inside / total, 1) if total else None, "targetPct": 80}

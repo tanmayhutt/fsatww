@@ -39,10 +39,13 @@ export default function AccuracyView({ data, decisionTime }) {
           <p className="kicker">forecast accuracy</p>
           <h2 className="h2" id="accuracy-title">How much to trust the day-ahead forecast.</h2>
         </div>
-        <p className="lead">
-          Every number uses only the forecast that existed at {decisionTime} GMT the day before delivery, across
-          all 31 decision days in January 2026, {fmtNum(s.count)} delivery hours.
-        </p>
+        <div>
+          <p className="lead">
+            Every number uses only the forecast that existed at {decisionTime} GMT the day before delivery, across
+            all 31 decision days in January 2026, {fmtNum(s.count)} delivery hours.
+          </p>
+          <p className="scope">Scored on January 2026 only. Forecasts can only be scored once the wind has happened.</p>
+        </div>
       </div>
 
       <dl className="metrics metrics-bone" data-reveal>
@@ -60,6 +63,69 @@ export default function AccuracyView({ data, decisionTime }) {
         <StatTile label="1 in 10 hours missed by over" value={fmtMW(s.p90AbsError)} detail={`Worst hour: ${fmtMW(s.maxAbsError)}`} />
         <StatTile label="root mean square error" value={fmtMW(s.rmse)} detail="Penalises large misses" />
       </dl>
+
+      <div className="callout" data-reveal>
+        <div className="callout-number">{fmtSigned(s.bias)}</div>
+        <div className="callout-body">
+          <h3 className="h3">The forecast ran too high, almost every day</h3>
+          <p>
+            Across January the day-ahead forecast averaged {fmtMW(Math.abs(s.bias))} above the wind that was actually
+            metered. It was over on {data.dayAhead.daysOver} of {data.dayAhead.days} days. A desk buying on the raw
+            number bought too little, day after day.
+          </p>
+        </div>
+      </div>
+
+      <div className="compare" data-reveal>
+        <div className="compare-head">
+          <p className="kicker">what the desk should have done</p>
+          <h3 className="h3">Take the bias off before buying</h3>
+          <p className="lead">
+            Each day, subtract the average overshoot of the days before it. Nothing from the future, nothing beyond
+            the two Elexon feeds. Scored on the {data.correction.days} January days that had at least one earlier day to
+            learn from.
+          </p>
+        </div>
+        <div className="compare-cols">
+          <div className="compare-col">
+            <p className="compare-label">Buying on the raw forecast</p>
+            <div className="compare-value">{fmtMW(data.correction.raw.mae)}</div>
+            <p className="compare-detail">typical miss per hour</p>
+            <p className="compare-detail">1 in 10 hours over {fmtMW(data.correction.raw.p90AbsError)}</p>
+          </div>
+          <div className="compare-col compare-col-good">
+            <p className="compare-label">Buying on the corrected number</p>
+            <div className="compare-value">{fmtMW(data.correction.corrected.mae)}</div>
+            <p className="compare-detail">typical miss per hour</p>
+            <p className="compare-detail">1 in 10 hours over {fmtMW(data.correction.corrected.p90AbsError)}</p>
+          </div>
+          <div className="compare-result">
+            <div className="compare-result-value">{fmtPct(data.correction.improvementPct)}</div>
+            <p>smaller miss, with one subtraction</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="check" data-reveal>
+        <div>
+          <p className="kicker">does the shaded range keep its promise</p>
+          <h3 className="h3">
+            {fmtPct(data.bandCheck.coveragePct)} of hours landed inside the {data.bandCheck.targetPct}% range
+          </h3>
+          <p className="lead">
+            For each day the range was learned from the other {data.dayAhead.days - 1} days, then checked against that
+            day. {data.bandCheck.coveragePct >= data.bandCheck.targetPct - 5
+              ? "Close to the target, so the range is a fair guide."
+              : "Short of the target, so treat the range as a floor, not a ceiling."}{" "}
+            One month is a small sample; more months would tighten it.
+          </p>
+        </div>
+        <div className="check-bar" aria-hidden="true">
+          <div className="check-fill" style={{ width: `${data.bandCheck.coveragePct}%` }} />
+          <div className="check-target" style={{ left: `${data.bandCheck.targetPct}%` }} />
+          <span className="check-tick" style={{ left: `${data.bandCheck.targetPct}%` }}>target {data.bandCheck.targetPct}%</span>
+        </div>
+      </div>
 
       <div className="figure" data-reveal>
         <div className="figure-head">

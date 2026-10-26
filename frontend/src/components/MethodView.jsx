@@ -65,6 +65,27 @@ export default function MethodView({ meta }) {
         </li>
       </ul>
 
+      <h3>Wind to plan for</h3>
+      <p>
+        The forecast minus the mean signed error of all earlier decision days in the study. For decision day 14 the
+        correction uses days 1 to 13 and nothing later. The first day has no history and gets no correction. The
+        accuracy page scores raw against corrected on the same days, so the comparison is fair.
+      </p>
+
+      <h3>Checking the range</h3>
+      <p>
+        The shaded range on the desk is the P10 to P90 of signed error for the forecast's lead time. To check it,
+        each day's range is rebuilt from the other thirty days and the metered value is tested against it. The share
+        of hours inside is reported next to the 80% target.
+      </p>
+
+      <h3>Scope</h3>
+      <p>
+        The brief asks for purchase decisions made in January 2026 and nothing else. The data is a fixed snapshot
+        pulled once from Elexon. The pipeline is the same for any month, so a live desk would only need a scheduled
+        refresh and a rolling window.
+      </p>
+
       <h3>Limits</h3>
       <ul>
         <li>One month of data. The expected range is indicative, not a calibrated forecast interval.</li>

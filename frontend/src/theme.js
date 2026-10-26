@@ -4,6 +4,7 @@
 export const COLORS = {
   forecast: "#5b63f5",
   actual: "#e8683f",
+  plan: "#171713",
   hindsight: "#5f5f57",
   band: "#c9ccff",
   bar: "#5b63f5",

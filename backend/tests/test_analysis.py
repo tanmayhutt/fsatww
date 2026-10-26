@@ -1,6 +1,6 @@
 from datetime import datetime, time, timezone
 
-from app.analysis import Forecast, WindData, horizon_profile, summarise
+from app.analysis import Forecast, WindData, band_coverage, corrected_pairs, horizon_profile, rolling_bias, summarise
 
 UTC = timezone.utc
 
@@ -65,3 +65,42 @@ def test_half_hourly_actuals_are_averaged_to_hours(tmp_path):
     )
     d = WindData.load(tmp_path)
     assert d.actuals == {ts(15, 0): 200.0}
+
+
+def make_month(days=4, bias=1000.0):
+    # Each decision day D-1 at 07:30 issues a forecast for day D that is
+    # `bias` MW above the actual, so the rolling correction can be checked.
+    forecasts = []
+    actuals = {}
+    for d in range(1, days + 1):
+        for h in range(24):
+            target = ts(d + 1, h)
+            forecasts.append(Forecast(ts(d, 7, 30), target, 10000.0 + bias))
+            actuals[target] = 10000.0
+    return WindData(forecasts, actuals)
+
+
+def test_rolling_bias_uses_only_earlier_days():
+    d = make_month()
+    table = rolling_bias(d, time(9, 50))
+    first = min(table)
+    assert table[first] == {"bias": 0.0, "days": 0}
+    later = [v for k, v in sorted(table.items())][1:]
+    assert all(v["bias"] == 1000.0 for v in later)
+    assert [v["days"] for v in later] == [1, 2, 3]
+
+
+def test_corrected_pairs_remove_a_constant_bias():
+    d = make_month()
+    pairs = corrected_pairs(d, time(9, 50))
+    assert len(pairs) == 3 * 24
+    assert all(p["errorCorrected"] == 0.0 for p in pairs)
+    assert all(p["planFor"] == 10000.0 for p in pairs)
+
+
+def test_band_coverage_counts_hours_inside_the_band():
+    d = make_month()
+    result = band_coverage(d, time(9, 50))
+    assert result["total"] == 4 * 24
+    assert result["inside"] == result["total"]
+    assert result["coveragePct"] == 100.0

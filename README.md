@@ -24,6 +24,12 @@ by hour of delivery, by day, and as a distribution.
 **Method.** Plain-language description of the data, the decision-moment rule, the metrics and the
 limits of one month of data.
 
+**What the desk should have done.** Two checks a reviewer can act on. The desk shows a bias-corrected
+"wind to plan for" next to every raw forecast, learned only from earlier days; scored across January,
+buying on the corrected number would have cut the typical hourly miss by about a quarter. And the
+shaded expected range is tested against the month it did not learn from: the share of hours that
+landed inside is reported next to the 80% target.
+
 ## The one idea that matters
 
 Elexon reissues the wind forecast several times a day. Each reissue for the same delivery hour is
@@ -134,8 +140,9 @@ cd backend && python -m scripts.fetch_data
 | Route | Purpose |
 | --- | --- |
 | `GET /api/meta` | Data window, default gate closure, available publish times |
-| `GET /api/decision?day=2026-01-14&decisionTime=09:50` | Forecast available at the decision moment for the next day, with actuals, earlier vintages and expected range |
-| `GET /api/accuracy?decisionTime=09:50` | Error metrics for the day-ahead forecasts across the month, plus the horizon profile |
+| `GET /api/decision?day=2026-01-14&decisionTime=09:50` | Forecast available at the decision moment for the next day, the bias-corrected wind to plan for, actuals, earlier vintages and expected range |
+| `GET /api/accuracy?decisionTime=09:50` | Error metrics for the day-ahead forecasts across the month, raw against bias-corrected, the band check, and the horizon profile |
+| `GET /api/actuals` | Hourly metered wind for the window, used by the hero animation |
 | `GET /api/vintages?day=2026-01-15` | Every forecast vintage covering a delivery day |
 | `GET /api/health` | Liveness and row counts |
 
