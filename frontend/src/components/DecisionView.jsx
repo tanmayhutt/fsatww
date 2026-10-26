@@ -80,11 +80,11 @@ export default function DecisionView({ meta, decisionTime }) {
     : [];
 
   return (
-    <section>
+    <div className="view">
       <div className="section-head">
         <div>
-          <p className="kicker">day-ahead desk, january 2026</p>
-          <h1 className="h1">The wind forecast you had when you had to buy.</h1>
+          <p className="kicker">day-ahead desk</p>
+          <h2 className="h2" id="desk-title">Pick a day. See only what the desk could see.</h2>
         </div>
         <p className="lead">
           Pick a decision day. The desk shows the newest Elexon forecast that existed at gate closure, and the
@@ -92,7 +92,7 @@ export default function DecisionView({ meta, decisionTime }) {
         </p>
       </div>
 
-      <div className="controls">
+      <div className="controls" data-reveal>
         <div className="stepper">
           <span className="stepper-label">decision day</span>
           <button
@@ -147,7 +147,7 @@ export default function DecisionView({ meta, decisionTime }) {
 
       {data && (
         <>
-          <div className="panel">
+          <div className="panel" data-reveal>
             <div>
               <p className="kicker">decided {dateTimeLabel(data.decisionAt).toLowerCase()}</p>
               <h2 className="panel-title">Buying for {dateLabel(data.deliveryDay)}</h2>
@@ -188,7 +188,7 @@ export default function DecisionView({ meta, decisionTime }) {
             </dl>
           </div>
 
-          <div className="figure">
+          <div className="figure" data-reveal>
             <div className="figure-head">
               <h3 className="h3">Hourly wind generation, {dateLabel(data.deliveryDay)}</h3>
               <p className="lead">
@@ -287,7 +287,7 @@ export default function DecisionView({ meta, decisionTime }) {
             </div>
           </div>
 
-          <div className="figure">
+          <div className="figure" data-reveal>
             <div className="figure-head">
               <h3 className="h3">How the forecast moved before gate closure</h3>
               <p className="lead">
@@ -319,7 +319,7 @@ export default function DecisionView({ meta, decisionTime }) {
             </div>
           </div>
 
-          <details className="details">
+          <details className="details" data-reveal>
             <summary>hourly table</summary>
             <div className="table-wrap">
               <table className="table">
@@ -352,7 +352,7 @@ export default function DecisionView({ meta, decisionTime }) {
           </details>
         </>
       )}
-    </section>
+    </div>
   );
 }
 

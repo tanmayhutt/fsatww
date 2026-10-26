@@ -1,20 +1,22 @@
 import { useEffect, useState } from "react";
 import { api } from "./api.js";
+import Smooth from "./components/Smooth.jsx";
+import Nav from "./components/Nav.jsx";
+import Hero from "./components/Hero.jsx";
+import Proof from "./components/Proof.jsx";
+import Dither from "./components/Dither.jsx";
+import Statement from "./components/Statement.jsx";
+import Reveals from "./components/Reveals.jsx";
+import Footer from "./components/Footer.jsx";
 import DecisionView from "./components/DecisionView.jsx";
 import AccuracyView from "./components/AccuracyView.jsx";
 import MethodView from "./components/MethodView.jsx";
-import { Loading, Turbine } from "./components/Turbine.jsx";
-
-const TABS = [
-  { id: "decision", label: "Day-ahead desk" },
-  { id: "accuracy", label: "Forecast accuracy" },
-  { id: "method", label: "Method" },
-];
+import { Loading } from "./components/Turbine.jsx";
 
 export default function App() {
   const [meta, setMeta] = useState(null);
+  const [accuracy, setAccuracy] = useState(null);
   const [error, setError] = useState(null);
-  const [tab, setTab] = useState("decision");
   const [decisionTime, setDecisionTime] = useState("09:50");
 
   useEffect(() => {
@@ -27,52 +29,63 @@ export default function App() {
       .catch((e) => setError(e.message));
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    setAccuracy(null);
+    api
+      .accuracy(decisionTime)
+      .then((d) => !cancelled && setAccuracy(d))
+      .catch((e) => !cancelled && setError(e.message));
+    return () => {
+      cancelled = true;
+    };
+  }, [decisionTime]);
+
+  // Bumps whenever a section gains content, so reveals bind to new nodes.
+  const version = `${meta ? 1 : 0}-${accuracy ? decisionTime : "x"}`;
+
   return (
-    <div className="app">
-      <a className="skip-link" href="#main">
+    <>
+      <a className="skip-link" href="#desk">
         Skip to content
       </a>
+      <Nav decisionTime={decisionTime} onDecisionTime={setDecisionTime} />
+      <Smooth>
+        <div id="page">
+          <Hero />
+          <Proof summary={accuracy?.dayAhead.summary} decisionTime={decisionTime} />
+          <Dither height={300} cell={4} source="streaks" className="seam" />
 
-      <nav className="nav" aria-label="Views">
-        <a className="nav-brand" href="/" onClick={(e) => { e.preventDefault(); setTab("decision"); }}>
-          <Turbine size={26} title="Wind Forecast Desk" />
-          <span className="nav-wordmark">Wind Forecast Desk</span>
-        </a>
-        <div className="nav-links">
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)} aria-current={tab === t.id ? "page" : undefined}>
-              {t.label}
-            </button>
-          ))}
+          <main>
+            {error && (
+              <div className="container">
+                <div className="notice notice-error">Could not reach the analysis API: {error}. Start the backend and reload.</div>
+              </div>
+            )}
+
+            <section className="band" id="desk" aria-labelledby="desk-title">
+              <div className="container">
+                {meta ? <DecisionView meta={meta} decisionTime={decisionTime} /> : !error && <Loading label="reading the wind" />}
+              </div>
+            </section>
+
+            <Statement />
+
+            <section className="band" id="accuracy" aria-labelledby="accuracy-title">
+              <div className="container">
+                {accuracy ? <AccuracyView data={accuracy} decisionTime={decisionTime} /> : !error && <Loading label="scoring every forecast" />}
+              </div>
+            </section>
+
+            <section className="band band-ink" id="method" aria-labelledby="method-title">
+              <div className="container">{meta && <MethodView meta={meta} />}</div>
+            </section>
+          </main>
+
+          <Footer meta={meta} />
         </div>
-        <label className="nav-gate">
-          <span className="nav-gate-hint">gate closure, GMT</span>
-          <input
-            type="time"
-            value={decisionTime}
-            step={300}
-            onChange={(e) => e.target.value && setDecisionTime(e.target.value)}
-            aria-label="Day-ahead decision time, GMT"
-          />
-        </label>
-      </nav>
-
-      <main id="main" className="main">
-        {error && (
-          <div className="notice notice-error">
-            Could not reach the analysis API: {error}. Start the backend and reload.
-          </div>
-        )}
-        {!meta && !error && <Loading label="reading the wind" />}
-        {meta && tab === "decision" && <DecisionView meta={meta} decisionTime={decisionTime} />}
-        {meta && tab === "accuracy" && <AccuracyView decisionTime={decisionTime} />}
-        {meta && tab === "method" && <MethodView meta={meta} />}
-      </main>
-
-      <footer className="footer">
-        <span>source: elexon bmrs, datasets windfor and fuelhh, national level, fuel type wind</span>
-        <span>january 2026, all times gmt</span>
-      </footer>
-    </div>
+      </Smooth>
+      <Reveals version={version} />
+    </>
   );
 }

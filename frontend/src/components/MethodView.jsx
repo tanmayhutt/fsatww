@@ -1,8 +1,14 @@
 export default function MethodView({ meta }) {
   return (
-    <section className="prose">
-      <p className="kicker">method</p>
-      <h1 className="h1">How the numbers are made.</h1>
+    <div className="view">
+      <div className="section-head">
+        <div>
+          <p className="kicker">method</p>
+          <h2 className="h2" id="method-title">How the numbers are made.</h2>
+        </div>
+        <p className="lead">For the reviewer. What the data is, which forecast counts, and what each metric means.</p>
+      </div>
+      <div className="prose" data-reveal>
 
       <h3>Data</h3>
       <p>
@@ -71,6 +77,7 @@ export default function MethodView({ meta }) {
           December and is excluded.
         </li>
       </ul>
-    </section>
+      </div>
+    </div>
   );
 }

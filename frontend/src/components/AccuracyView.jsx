@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -13,35 +12,16 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { api } from "../api.js";
 import { COLORS } from "../theme.js";
 import { dateLabel, dateTimeLabel, fmtMW, fmtMWh, fmtNum, fmtPct, fmtSigned } from "../format.js";
 import StatTile from "./StatTile.jsx";
 import ChartTooltip from "./ChartTooltip.jsx";
-import { Loading } from "./Turbine.jsx";
 
 const tick = { fontSize: 12, fill: COLORS.tick, fontFamily: "var(--mono)" };
 const tickSmall = { ...tick, fontSize: 11 };
 const cursorFill = { fill: COLORS.grid };
 
-export default function AccuracyView({ decisionTime }) {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setData(null);
-    api
-      .accuracy(decisionTime)
-      .then((d) => !cancelled && setData(d))
-      .catch((e) => !cancelled && setError(e.message));
-    return () => {
-      cancelled = true;
-    };
-  }, [decisionTime]);
-
-  if (error) return <div className="notice notice-error">{error}</div>;
-  if (!data) return <Loading label="scoring every forecast" />;
+export default function AccuracyView({ data, decisionTime }) {
 
   const s = data.dayAhead.summary;
   const horizon = data.byHorizon.filter((h) => h.count >= 30);
@@ -53,11 +33,11 @@ export default function AccuracyView({ decisionTime }) {
   const worstHour = byHour.reduce((a, b) => (b.mae > a.mae ? b : a), byHour[0]);
 
   return (
-    <section>
+    <div className="view">
       <div className="section-head">
         <div>
-          <p className="kicker">forecast accuracy, january 2026</p>
-          <h1 className="h1">How much to trust the day-ahead forecast.</h1>
+          <p className="kicker">forecast accuracy</p>
+          <h2 className="h2" id="accuracy-title">How much to trust the day-ahead forecast.</h2>
         </div>
         <p className="lead">
           Every number uses only the forecast that existed at {decisionTime} GMT the day before delivery, across
@@ -65,7 +45,7 @@ export default function AccuracyView({ decisionTime }) {
         </p>
       </div>
 
-      <dl className="metrics metrics-bone">
+      <dl className="metrics metrics-bone" data-reveal>
         <StatTile
           label="mean absolute error"
           value={fmtMW(s.mae)}
@@ -81,7 +61,7 @@ export default function AccuracyView({ decisionTime }) {
         <StatTile label="root mean square error" value={fmtMW(s.rmse)} detail="Penalises large misses" />
       </dl>
 
-      <div className="figure">
+      <div className="figure" data-reveal>
         <div className="figure-head">
           <h3 className="h3">Error grows with lead time</h3>
           <p className="lead">
@@ -144,8 +124,8 @@ export default function AccuracyView({ decisionTime }) {
         )}
       </div>
 
-      <div className="two-up">
-        <div className="figure">
+      <div className="two-up" data-reveal>
+        <div className="figure" data-reveal>
           <div className="figure-head">
             <h3 className="h3">Error by hour of delivery</h3>
             <p className="lead">Mean absolute error of the day-ahead forecast, per hour of the day.</p>
@@ -180,7 +160,7 @@ export default function AccuracyView({ decisionTime }) {
           </p>
         </div>
 
-        <div className="figure">
+        <div className="figure" data-reveal>
           <div className="figure-head">
             <h3 className="h3">Where the errors land</h3>
             <p className="lead">
@@ -223,7 +203,7 @@ export default function AccuracyView({ decisionTime }) {
         </div>
       </div>
 
-      <div className="figure">
+      <div className="figure" data-reveal>
         <div className="figure-head">
           <h3 className="h3">Day by day</h3>
           <p className="lead">Daily wind energy, forecast against metered, for every delivery day bought in January.</p>
@@ -294,7 +274,7 @@ export default function AccuracyView({ decisionTime }) {
         </details>
       </div>
 
-      <details className="details">
+      <details className="details" data-reveal>
         <summary>error by lead time, full table</summary>
         <div className="table-wrap">
           <table className="table">
@@ -325,7 +305,7 @@ export default function AccuracyView({ decisionTime }) {
           </table>
         </div>
       </details>
-    </section>
+    </div>
   );
 }
 
