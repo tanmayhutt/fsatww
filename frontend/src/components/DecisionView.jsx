@@ -376,12 +376,12 @@ export default function DecisionView({ meta, decisionTime }) {
           </div>
 
           <details className="details" data-reveal>
-            <summary>hourly table</summary>
+            <summary>hourly table, {dateLabel(data.deliveryDay)}</summary>
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>hour</th>
+                    <th>delivery hour</th>
                     <th className="num">lead time</th>
                     <th className="num">forecast</th>
                     <th className="num">plan for</th>
@@ -394,7 +394,9 @@ export default function DecisionView({ meta, decisionTime }) {
                 <tbody>
                   {points.map((p) => (
                     <tr key={p.startTime}>
-                      <td>{p.hour}</td>
+                      <td>
+                        {dateLabel(data.deliveryDay).slice(4)}, {p.hour}
+                      </td>
                       <td className="num">{p.horizonHours} h</td>
                       <td className="num">{fmtMW(p.forecast)}</td>
                       <td className="num">{fmtMW(p.planFor)}</td>
