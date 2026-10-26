@@ -1147,7 +1147,6 @@ main {
   grid-template-columns: minmax(0, 1fr);
   align-items: end;
   gap: clamp(20px, 2.6vw, 36px);
-  max-width: 62ch;
 }
 .hero .h1 {
   max-width: none;
@@ -1169,6 +1168,7 @@ main {
   display: grid;
   gap: 22px;
   min-width: 0;
+  max-width: 62ch;
   padding-bottom: 8px;
 }
 .hero-sub .lead {
