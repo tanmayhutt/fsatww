@@ -94,7 +94,6 @@ export default function Hero() {
         </div>
       </div>
       <div className="container hero-caption" aria-live="off">
-        <span className="hero-caption-dot" aria-hidden="true" />
         {stamp ? (
           <>
             <span>replaying january, metered wind</span>

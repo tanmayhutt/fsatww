@@ -132,19 +132,7 @@ section {
   color: var(--muted);
   margin: 0 0 18px;
 }
-.kicker::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--lime);
-  border: 1px solid rgba(23, 23, 19, 0.25);
-}
-.band-ink .kicker::before,
-.panel .kicker::before,
-.hero .kicker::before {
-  border-color: transparent;
-}
+
 
 .section-head {
   display: grid;
@@ -1182,12 +1170,6 @@ main {
   font-family: var(--mono);
   font-size: 12px;
   color: rgba(244, 241, 232, 0.62);
-}
-.hero-caption-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--lime);
 }
 .hero-caption-value {
   color: var(--lime);
